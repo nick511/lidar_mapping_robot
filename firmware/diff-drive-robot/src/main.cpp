@@ -7,14 +7,10 @@
 #include <geometry_msgs/msg/twist.h>
 
 // ======================================================
-// TARGET SPEEDS
+// CMD_VEL CALLBACK
 // ======================================================
 float linear_x = 0.0;
 float angular_z = 0.0;
-
-// ======================================================
-// CMD_VEL CALLBACK
-// ======================================================
 void cmdVelCallback(const void *msgin)
 {
   const geometry_msgs__msg__Twist *twist =
@@ -56,7 +52,10 @@ void loop()
   // ==========================================
   if (millis() - last_control >= 20)
   {
-    last_control = millis();
-    setMotorByVel(linear_x, angular_z);
+    unsigned long now = millis();
+    float dt = (now - last_control) / 1000.0;
+    last_control = now;
+
+    setMotorByVel(linear_x, angular_z, dt);
   }
 }
