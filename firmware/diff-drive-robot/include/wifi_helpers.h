@@ -2,5 +2,7 @@
 #define WIFI_HELPERS_H
 
 void wifi_setup(const char *ssid, const char *passphrase);
+void ota_setup();
+void ota_handle();
 
 #endif

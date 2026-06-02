@@ -1,7 +1,9 @@
+#include "wifi_helpers.h"
 #include "ros_helpers.h"
 #include "motor_helpers.h"
 
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 
 #include <micro_ros_platformio.h>
 #include <geometry_msgs/msg/twist.h>
@@ -27,6 +29,9 @@ void setup()
 {
   Serial.begin(115200);
 
+  wifi_setup(WIFI_SSID, WIFI_PASS);
+  ota_setup();
+
   motorSetup();
   encoderSetup();
   enableMotors();
@@ -45,6 +50,8 @@ unsigned long last_control = 0;
 
 void loop()
 {
+  ota_handle();
+
   ros_subscription();
 
   // ==========================================
