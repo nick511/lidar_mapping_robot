@@ -32,21 +32,26 @@ void setup()
   wifi_setup(WIFI_SSID, WIFI_PASS);
   ota_setup();
 
+  // ==========================================
+  // MOTOR SETUP
+  // ==========================================
   motorSetup();
   encoderSetup();
   enableMotors();
 
   // ==========================================
-  // micro-ROS & ROS INIT
+  // micro-ROS SETUP
   // ==========================================
   micro_ros_setup((char *)WIFI_SSID, (char *)WIFI_PASS, (char *)AGENT_IP, AGENT_PORT, "diff_bot_esp32");
   ros_subscription_init("cmd_vel", cmdVelCallback);
+  ros_publisher_init("odom");
 }
 
 // ======================================================
 // MAIN LOOP
 // ======================================================
-unsigned long last_control = 0;
+unsigned long last_control_50hz = 0;
+unsigned long last_control_20hz = 0;
 
 void loop()
 {
@@ -57,12 +62,24 @@ void loop()
   // ==========================================
   // 50Hz CONTROL LOOP
   // ==========================================
-  if (millis() - last_control >= 20)
+  if (millis() - last_control_50hz >= 20)
   {
     unsigned long now = millis();
-    float dt = (now - last_control) / 1000.0;
-    last_control = now;
+    float dt = (now - last_control_50hz) / 1000.0;
+    last_control_50hz = now;
 
     setMotorByVel(linear_x, angular_z, dt);
+  }
+
+  // ==========================================
+  // 20Hz CONTROL LOOP
+  // ==========================================
+  if (millis() - last_control_20hz >= 50)
+  {
+    unsigned long now = millis();
+    float dt = (now - last_control_20hz) / 1000.0;
+    last_control_20hz = now;
+
+    ros_publishOdometry(updateOdometry(dt));
   }
 }

@@ -1,5 +1,6 @@
 #include "motor_helpers.h"
 #include "config.h"
+#include "types.h"
 
 #include <Arduino.h>
 
@@ -141,8 +142,7 @@ float ticksToRPM(long delta_ticks, float delta_time)
 // ======================================================
 // MOTOR CONTROL BY VELOCITY
 // ======================================================
-long prev_left_ticks = 0;
-long prev_right_ticks = 0;
+EncoderTracker motor_tracker;
 float left_pwm = 0;
 float right_pwm = 0;
 float wheel_circumference = PI * RobotConfig::WHEEL_DIAMETER;
@@ -151,6 +151,8 @@ void setMotorByVel(float linear_x, float angular_z, float delta_time)
 {
   // ==================================================
   // TARGET WHEEL VELOCITIES
+  // vl​ = v − (L/2 * ​ω), vr ​= v + (L/2 * ​ω)
+  // v=linear velocity, ω=angular velocity, L=wheel distance, vr,vl=wheel velocities
   // ==================================================
   float left_linear =
       linear_x - (angular_z * RobotConfig::WHEEL_BASE / 2.0);
@@ -173,11 +175,11 @@ void setMotorByVel(float linear_x, float angular_z, float delta_time)
   long l_ticks = left_ticks;
   long r_ticks = right_ticks;
 
-  long dl = l_ticks - prev_left_ticks;
-  long dr = r_ticks - prev_right_ticks;
+  long dl = l_ticks - motor_tracker.prev_left;
+  long dr = r_ticks - motor_tracker.prev_right;
 
-  prev_left_ticks = l_ticks;
-  prev_right_ticks = r_ticks;
+  motor_tracker.prev_left = l_ticks;
+  motor_tracker.prev_right = r_ticks;
 
   // ==================================================
   // ACTUAL RPM
@@ -203,6 +205,8 @@ void setMotorByVel(float linear_x, float angular_z, float delta_time)
       Pins::R_IN2,
       right_pwm / 255.0);
 
+  return;
+
   // ==================================================
   // DEBUG
   // ==================================================
@@ -223,4 +227,40 @@ void setMotorByVel(float linear_x, float angular_z, float delta_time)
 
   Serial.print("  PWM: ");
   Serial.println(right_pwm);
+}
+
+// ======================================================
+// ODOMETRY
+// ======================================================
+EncoderTracker odom_tracker;
+float x = 0;
+float y = 0;
+float theta = 0;
+Pose updateOdometry(float dt)
+{
+  long l_ticks = left_ticks;
+  long r_ticks = right_ticks;
+
+  long dl_ticks = l_ticks - odom_tracker.prev_left;
+  long dr_ticks = r_ticks - odom_tracker.prev_right;
+
+  odom_tracker.prev_left = l_ticks;
+  odom_tracker.prev_right = r_ticks;
+
+  float dist_per_tick =
+      wheel_circumference / RobotConfig::TICKS_PER_REV;
+
+  float dl = dl_ticks * dist_per_tick;
+  float dr = dr_ticks * dist_per_tick;
+
+  // Forward movement: Δx=d⋅cos(θ), Δy=d⋅sin(θ)
+  float d_center = (dr + dl) / 2.0;
+  x += d_center * cos(theta);
+  y += d_center * sin(theta);
+
+  // Differential drive motion: Δθ = (dr​−dl​​)/L
+  float d_theta = (dr - dl) / RobotConfig::WHEEL_BASE;
+  theta += d_theta;
+
+  return {x, y, theta};
 }

@@ -4,10 +4,12 @@
 #include <rcl/rcl.h>
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
-// #include <led_control_msgs/msg/led_status.h>
 #include <geometry_msgs/msg/twist.h>
+#include <nav_msgs/msg/odometry.h>
+#include <rosidl_runtime_c/string_functions.h>
 
 geometry_msgs__msg__Twist msg_sub;
+nav_msgs__msg__Odometry odometry_msg;
 
 rcl_publisher_t publisher;
 rcl_subscription_t subscriber;
@@ -41,20 +43,13 @@ void micro_ros_setup(char *ssid, char *pass, char *agent_ip, uint16_t agent_port
     }
   }
 
+  Serial.println("Connected to Agent!");
+
   allocator = rcl_get_default_allocator();
   rclc_support_init(&support, 0, NULL, &allocator);
 
   rclc_node_init_default(&node, node_name, "", &support);
 }
-
-/* void ros_publisher_init(const char *topic_name = "led_state")
-{
-  rclc_publisher_init_default(
-      &publisher,
-      &node,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(led_control_msgs, msg, LedStatus),
-      topic_name);
-} */
 
 void ros_subscription_init(const char *topic_name, rclc_subscription_callback_t callback = NULL)
 {
@@ -73,22 +68,61 @@ void ros_subscription_init(const char *topic_name, rclc_subscription_callback_t 
       ON_NEW_DATA);
 }
 
-/* void ros_publish(led_control_msgs__msg__LedStatus led_msg)
+void ros_publisher_init(const char *topic_name)
 {
-  rcl_ret_t ret = rcl_publish(&publisher, &led_msg, NULL);
+  init_odom_msg();
+
+  rclc_publisher_init_default(
+      &publisher,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
+      topic_name);
+}
+
+void init_odom_msg()
+{
+  // Initialize message memory
+  nav_msgs__msg__Odometry__init(&odometry_msg);
+
+  // Frame IDs
+  rosidl_runtime_c__String__assign(
+      &odometry_msg.header.frame_id,
+      "odom");
+
+  rosidl_runtime_c__String__assign(
+      &odometry_msg.child_frame_id,
+      "base_link");
+}
+
+void ros_subscription()
+{
+  rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+}
+
+void ros_publish(const nav_msgs__msg__Odometry &msg)
+{
+  rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
 
   if (ret != RCL_RET_OK)
   {
     Serial.print("Publish failed! Error code: ");
     Serial.println(ret);
   }
-  else
-  {
-    printf("LED Status -> R: %d, G: %d, Y: %d\n", led_msg.red, led_msg.green, led_msg.yellow);
-  }
-} */
+}
 
-void ros_subscription()
+void ros_publishOdometry(Pose pose)
 {
-  rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+  odometry_msg.pose.pose.position.x = pose.x;
+  odometry_msg.pose.pose.position.y = pose.y;
+  odometry_msg.pose.pose.position.z = 0.0;
+
+  odometry_msg.pose.pose.orientation.x = 0.0;
+  odometry_msg.pose.pose.orientation.y = 0.0;
+  float half = pose.theta * 0.5;
+  odometry_msg.pose.pose.orientation.z = sin(half);
+  odometry_msg.pose.pose.orientation.w = cos(half);
+
+  printf("Publishing Odometry -> X: %f, Y: %f, Theta: %f\n", odometry_msg.pose.pose.position.x, odometry_msg.pose.pose.position.y, odometry_msg.pose.pose.orientation.z);
+
+  ros_publish(odometry_msg);
 }
