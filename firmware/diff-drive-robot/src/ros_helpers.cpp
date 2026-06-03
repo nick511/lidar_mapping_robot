@@ -6,12 +6,15 @@
 #include <rclc/executor.h>
 #include <geometry_msgs/msg/twist.h>
 #include <nav_msgs/msg/odometry.h>
+#include <sensor_msgs/msg/imu.h>
 #include <rosidl_runtime_c/string_functions.h>
 
 geometry_msgs__msg__Twist msg_sub;
 nav_msgs__msg__Odometry odometry_msg;
+sensor_msgs__msg__Imu imu_msg;
 
-rcl_publisher_t publisher;
+rcl_publisher_t odom_publisher;
+rcl_publisher_t imu_publisher;
 rcl_subscription_t subscriber;
 rclc_support_t support;
 rcl_allocator_t allocator;
@@ -68,17 +71,6 @@ void ros_subscription_init(const char *topic_name, rclc_subscription_callback_t 
       ON_NEW_DATA);
 }
 
-void ros_publisher_init(const char *topic_name)
-{
-  init_odom_msg();
-
-  rclc_publisher_init_default(
-      &publisher,
-      &node,
-      ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-      topic_name);
-}
-
 void init_odom_msg()
 {
   // Initialize message memory
@@ -94,20 +86,29 @@ void init_odom_msg()
       "base_link");
 }
 
+void ros_publisher_init()
+{
+  init_odom_msg();
+
+  rclc_publisher_init_default(
+      &odom_publisher,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
+      "odom");
+
+  rclc_publisher_init_default(
+      &imu_publisher,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(
+          sensor_msgs,
+          msg,
+          Imu),
+      "/imu/data");
+}
+
 void ros_subscription()
 {
   rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
-}
-
-void ros_publish(const nav_msgs__msg__Odometry &msg)
-{
-  rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
-
-  if (ret != RCL_RET_OK)
-  {
-    Serial.print("Publish failed! Error code: ");
-    Serial.println(ret);
-  }
 }
 
 void ros_publishOdometry(Pose pose)
@@ -124,5 +125,35 @@ void ros_publishOdometry(Pose pose)
 
   printf("Publishing Odometry -> X: %f, Y: %f, Theta: %f\n", odometry_msg.pose.pose.position.x, odometry_msg.pose.pose.position.y, odometry_msg.pose.pose.orientation.z);
 
-  ros_publish(odometry_msg);
+  rcl_ret_t ret = rcl_publish(&odom_publisher, &odometry_msg, NULL);
+
+  if (ret != RCL_RET_OK)
+  {
+    Serial.print("Publish odometry failed! Error code: ");
+    Serial.println(ret);
+  }
+}
+
+const float GRAVITY = 9.80665f;
+void ros_publishIMU(float acc_x, float acc_y, float acc_z, float gyr_z)
+{
+  imu_msg.linear_acceleration.x =
+      acc_x * GRAVITY;
+
+  imu_msg.linear_acceleration.y =
+      acc_y * GRAVITY;
+
+  imu_msg.linear_acceleration.z =
+      acc_z * GRAVITY;
+
+  imu_msg.angular_velocity.z =
+      gyr_z * DEG_TO_RAD;
+
+  rcl_ret_t ret = rcl_publish(&imu_publisher, &imu_msg, NULL);
+
+  if (ret != RCL_RET_OK)
+  {
+    Serial.print("Publish IMU failed! Error code: ");
+    Serial.println(ret);
+  }
 }

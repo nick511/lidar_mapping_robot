@@ -1,12 +1,16 @@
 #include "wifi_helpers.h"
 #include "ros_helpers.h"
 #include "motor_helpers.h"
+#include "sensor_helpers.h"
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <ICM_20948.h>
 
 #include <micro_ros_platformio.h>
 #include <geometry_msgs/msg/twist.h>
+
+ICM_20948_I2C imu;
 
 // ======================================================
 // CMD_VEL CALLBACK
@@ -33,6 +37,13 @@ void setup()
   ota_setup();
 
   // ==========================================
+  // SENSOR SETUP
+  // ==========================================
+  Wire.begin();
+  Wire.setClock(400000);
+  imuSetup(&imu);
+
+  // ==========================================
   // MOTOR SETUP
   // ==========================================
   motorSetup();
@@ -44,7 +55,7 @@ void setup()
   // ==========================================
   micro_ros_setup((char *)WIFI_SSID, (char *)WIFI_PASS, (char *)AGENT_IP, AGENT_PORT, "diff_bot_esp32");
   ros_subscription_init("cmd_vel", cmdVelCallback);
-  ros_publisher_init("odom");
+  ros_publisher_init();
 }
 
 // ======================================================
@@ -69,6 +80,10 @@ void loop()
     last_control_50hz = now;
 
     setMotorByVel(linear_x, angular_z, dt);
+
+    // IMU
+    imu.getAGMT();
+    ros_publishIMU(imu.accX(), imu.accY(), imu.accZ(), imu.gyrZ());
   }
 
   // ==========================================
