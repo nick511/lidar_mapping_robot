@@ -28,3 +28,24 @@ void imuSetup(ICM_20948_I2C *imuP)
     }
   }
 }
+
+float imuGetGyroZBias(ICM_20948_I2C *imuP)
+{
+  ICM_20948_I2C &imu = *imuP;
+
+  float sum = 0.0f;
+  int samples = 200;
+  for (int i = 0; i < samples; i++)
+  {
+    imu.getAGMT();
+    sum += imu.gyrZ() * DEG_TO_RAD; // Ensure units match your loop
+    delay(5);
+  }
+
+  float gyro_z_bias = sum / (float)samples;
+
+  Serial.print("Calculated Bias: ");
+  Serial.println(gyro_z_bias, 6);
+
+  return gyro_z_bias;
+}

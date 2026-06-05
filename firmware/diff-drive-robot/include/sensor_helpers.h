@@ -4,5 +4,6 @@
 #include <ICM_20948.h>
 
 void imuSetup(ICM_20948_I2C *imu);
+float imuGetGyroZBias(ICM_20948_I2C *imu);
 
 #endif

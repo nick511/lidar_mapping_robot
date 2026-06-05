@@ -11,6 +11,7 @@
 #include <geometry_msgs/msg/twist.h>
 
 ICM_20948_I2C imu;
+float gyro_z_bias = 0.0f;
 
 // ======================================================
 // CMD_VEL CALLBACK
@@ -42,6 +43,7 @@ void setup()
   Wire.begin();
   Wire.setClock(400000);
   imuSetup(&imu);
+  gyro_z_bias = imuGetGyroZBias(&imu);
 
   // ==========================================
   // MOTOR SETUP
@@ -80,10 +82,6 @@ void loop()
     last_control_50hz = now;
 
     setMotorByVel(linear_x, angular_z, dt);
-
-    // IMU
-    imu.getAGMT();
-    ros_publishIMU(imu.accX(), imu.accY(), imu.accZ(), imu.gyrZ());
   }
 
   // ==========================================
@@ -95,6 +93,12 @@ void loop()
     float dt = (now - last_control_20hz) / 1000.0;
     last_control_20hz = now;
 
-    ros_publishOdometry(updateOdometry(dt));
+    // IMU
+    imu.getAGMT();
+    ros_publishIMU(imu.accX(), imu.accY(), imu.accZ(), imu.gyrZ());
+
+    // ODOMETRY
+    float gyro_z_clean = (imu.gyrZ() * DEG_TO_RAD) - gyro_z_bias;
+    ros_publishOdometry(updateOdometry(dt, gyro_z_clean));
   }
 }

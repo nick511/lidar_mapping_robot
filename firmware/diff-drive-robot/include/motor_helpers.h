@@ -9,6 +9,6 @@ void enableMotors();
 void disableMotors();
 
 void setMotorByVel(float linear_x, float angular_z, float delta_time);
-Pose updateOdometry(float delta_time);
+Pose updateOdometry(float delta_time, float gyro_z);
 
 #endif

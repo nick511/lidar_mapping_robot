@@ -235,8 +235,9 @@ void setMotorByVel(float linear_x, float angular_z, float delta_time)
 EncoderTracker odom_tracker;
 float x = 0;
 float y = 0;
-float theta = 0;
-Pose updateOdometry(float dt)
+float theta_encoder = 0;
+float theta_imu = 0;
+Pose updateOdometry(float dt, float gyro_z)
 {
   long l_ticks = left_ticks;
   long r_ticks = right_ticks;
@@ -255,12 +256,19 @@ Pose updateOdometry(float dt)
 
   // Forward movement: Δx=d⋅cos(θ), Δy=d⋅sin(θ)
   float d_center = (dr + dl) / 2.0;
-  x += d_center * cos(theta);
-  y += d_center * sin(theta);
+  x += d_center * cos(theta_encoder);
+  y += d_center * sin(theta_encoder);
 
   // Differential drive motion: Δθ = (dr​−dl​​)/L
   float d_theta = (dr - dl) / RobotConfig::WHEEL_BASE;
-  theta += d_theta;
+  theta_encoder += d_theta;
 
-  return {x, y, theta};
+  // simple IMU fusion
+  theta_imu += gyro_z * dt;
+
+  float theta_fused =
+      0.95 * theta_imu +
+      0.05 * theta_encoder;
+
+  return {x, y, theta_fused};
 }
