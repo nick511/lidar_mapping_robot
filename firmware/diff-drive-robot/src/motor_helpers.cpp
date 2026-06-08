@@ -239,7 +239,7 @@ float x = 0;
 float y = 0;
 float theta_encoder = 0;
 float theta_imu = 0;
-Pose updateOdometry(float dt, float gyro_z)
+Pose updateOdometry(float dt, bool use_imu, float gyro_z)
 {
   long l_ticks = left_ticks;
   long r_ticks = right_ticks;
@@ -268,11 +268,19 @@ Pose updateOdometry(float dt, float gyro_z)
   theta_encoder += d_theta;
 
   // simple IMU fusion
-  theta_imu += gyro_z * dt;
+  float theta_fused = 0.0f;
+  if (use_imu)
+  {
+    theta_imu += gyro_z * dt;
 
-  float theta_fused =
-      0.95 * theta_imu +
-      0.05 * theta_encoder;
+    theta_fused =
+        0.95 * theta_imu +
+        0.05 * theta_encoder;
+  }
+  else
+  {
+    theta_fused = theta_encoder;
+  }
 
   return {x, y, theta_fused};
 }

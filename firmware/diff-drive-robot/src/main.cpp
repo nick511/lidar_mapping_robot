@@ -10,6 +10,9 @@
 #include <micro_ros_platformio.h>
 #include <geometry_msgs/msg/twist.h>
 
+const int READY_LED_PIN = 2;
+const bool IMU_ENABLED = true;
+
 ICM_20948_I2C imu;
 float gyro_z_bias = 0.0f;
 
@@ -34,16 +37,23 @@ void setup()
 {
   Serial.begin(115200);
 
+  // Initialize READY LED
+  pinMode(READY_LED_PIN, OUTPUT);
+
+  // Wifi and OTA
   wifi_setup(WIFI_SSID, WIFI_PASS);
   ota_setup();
 
   // ==========================================
   // SENSOR SETUP
   // ==========================================
-  Wire.begin();
-  Wire.setClock(400000);
-  imuSetup(&imu);
-  gyro_z_bias = imuGetGyroZBias(&imu);
+  if (IMU_ENABLED)
+  {
+    Wire.begin();
+    Wire.setClock(400000);
+    imuSetup(&imu);
+    gyro_z_bias = imuGetGyroZBias(&imu);
+  }
 
   // ==========================================
   // MOTOR SETUP
@@ -58,6 +68,9 @@ void setup()
   micro_ros_setup((char *)WIFI_SSID, (char *)WIFI_PASS, (char *)AGENT_IP, AGENT_PORT, "diff_bot_esp32");
   ros_subscription_init("cmd_vel", cmdVelCallback);
   ros_publisher_init();
+
+  // Indicate setup is complete
+  digitalWrite(READY_LED_PIN, HIGH);
 }
 
 // ======================================================
@@ -94,11 +107,15 @@ void loop()
     last_control_20hz = now;
 
     // IMU
-    imu.getAGMT();
-    ros_publishIMU(imu.accX(), imu.accY(), imu.accZ(), imu.gyrZ());
+    float gyro_z_clean = 0.0f;
+    if (IMU_ENABLED)
+    {
+      imu.getAGMT();
+      ros_publishIMU(imu.accX(), imu.accY(), imu.accZ(), imu.gyrZ());
+      gyro_z_clean = (imu.gyrZ() * DEG_TO_RAD) - gyro_z_bias;
+    }
 
     // ODOMETRY
-    float gyro_z_clean = (imu.gyrZ() * DEG_TO_RAD) - gyro_z_bias;
-    ros_publishOdometry(updateOdometry(dt, gyro_z_clean));
+    ros_publishOdometry(updateOdometry(dt, IMU_ENABLED, gyro_z_clean));
   }
 }
