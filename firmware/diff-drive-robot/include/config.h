@@ -25,9 +25,10 @@ namespace Pins
 
 namespace RobotConfig
 {
-  constexpr float WHEEL_BASE = 0.25;     // meters
+  constexpr float WHEEL_BASE = 0.26;     // meters
   constexpr float WHEEL_DIAMETER = 0.07; // meters
-  constexpr float TICKS_PER_REV = 493;   // L 490, R 496
+  constexpr float TICKS_PER_REV_L = 492;
+  constexpr float TICKS_PER_REV_R = 493;
 }
 
 #endif

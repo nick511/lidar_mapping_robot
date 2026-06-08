@@ -132,9 +132,9 @@ float getPwm(float target_rpm, float actual_rpm, float pwm)
   return constrain(pwm, -255, 255);
 }
 
-float ticksToRPM(long delta_ticks, float delta_time)
+float ticksToRPM(long delta_ticks, float delta_time, float ticks_per_rev)
 {
-  float revs = (float)delta_ticks / RobotConfig::TICKS_PER_REV;
+  float revs = (float)delta_ticks / ticks_per_rev;
 
   return (revs / delta_time) * 60.0;
 }
@@ -184,8 +184,8 @@ void setMotorByVel(float linear_x, float angular_z, float delta_time)
   // ==================================================
   // ACTUAL RPM
   // ==================================================
-  float left_actual_rpm = ticksToRPM(dl, delta_time);
-  float right_actual_rpm = ticksToRPM(dr, delta_time);
+  float left_actual_rpm = ticksToRPM(dl, delta_time, RobotConfig::TICKS_PER_REV_L);
+  float right_actual_rpm = ticksToRPM(dr, delta_time, RobotConfig::TICKS_PER_REV_R);
 
   left_pwm = getPwm(left_target_rpm, left_actual_rpm, left_pwm);
   right_pwm = getPwm(right_target_rpm, right_actual_rpm, right_pwm);
@@ -204,6 +204,8 @@ void setMotorByVel(float linear_x, float angular_z, float delta_time)
       Pins::R_IN1,
       Pins::R_IN2,
       right_pwm / 255.0);
+
+  // printf("Ticks -> Left: %ld, Right: %ld\n", l_ticks, r_ticks);
 
   return;
 
@@ -248,11 +250,13 @@ Pose updateOdometry(float dt, float gyro_z)
   odom_tracker.prev_left = l_ticks;
   odom_tracker.prev_right = r_ticks;
 
-  float dist_per_tick =
-      wheel_circumference / RobotConfig::TICKS_PER_REV;
+  float dist_per_tick_l =
+      wheel_circumference / RobotConfig::TICKS_PER_REV_L;
+  float dist_per_tick_r =
+      wheel_circumference / RobotConfig::TICKS_PER_REV_R;
 
-  float dl = dl_ticks * dist_per_tick;
-  float dr = dr_ticks * dist_per_tick;
+  float dl = dl_ticks * dist_per_tick_l;
+  float dr = dr_ticks * dist_per_tick_r;
 
   // Forward movement: Δx=d⋅cos(θ), Δy=d⋅sin(θ)
   float d_center = (dr + dl) / 2.0;
