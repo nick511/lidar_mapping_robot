@@ -5,5 +5,6 @@
 
 void imuSetup(ICM_20948_I2C *imu);
 float imuGetGyroZBias(ICM_20948_I2C *imu);
+float getCleanGyroZ(ICM_20948_I2C *imu);
 
 #endif

@@ -137,17 +137,11 @@ void ros_publishOdometry(Pose pose)
 const float GRAVITY = 9.80665f;
 void ros_publishIMU(float acc_x, float acc_y, float acc_z, float gyr_z)
 {
-  imu_msg.linear_acceleration.x =
-      acc_x * GRAVITY;
+  imu_msg.linear_acceleration.x = acc_x * GRAVITY;
+  imu_msg.linear_acceleration.y = acc_y * GRAVITY;
+  imu_msg.linear_acceleration.z = acc_z * GRAVITY;
 
-  imu_msg.linear_acceleration.y =
-      acc_y * GRAVITY;
-
-  imu_msg.linear_acceleration.z =
-      acc_z * GRAVITY;
-
-  imu_msg.angular_velocity.z =
-      gyr_z * DEG_TO_RAD;
+  imu_msg.angular_velocity.z = gyr_z * DEG_TO_RAD;
 
   rcl_ret_t ret = rcl_publish(&imu_publisher, &imu_msg, NULL);
 

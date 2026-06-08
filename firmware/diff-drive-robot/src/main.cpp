@@ -14,7 +14,6 @@ const int READY_LED_PIN = 2;
 const bool IMU_ENABLED = true;
 
 ICM_20948_I2C imu;
-float gyro_z_bias = 0.0f;
 
 // ======================================================
 // CMD_VEL CALLBACK
@@ -45,6 +44,13 @@ void setup()
   ota_setup();
 
   // ==========================================
+  // MOTOR SETUP
+  // ==========================================
+  motorSetup();
+  encoderSetup();
+  enableMotors();
+
+  // ==========================================
   // SENSOR SETUP
   // ==========================================
   if (IMU_ENABLED)
@@ -52,15 +58,7 @@ void setup()
     Wire.begin();
     Wire.setClock(400000);
     imuSetup(&imu);
-    gyro_z_bias = imuGetGyroZBias(&imu);
   }
-
-  // ==========================================
-  // MOTOR SETUP
-  // ==========================================
-  motorSetup();
-  encoderSetup();
-  enableMotors();
 
   // ==========================================
   // micro-ROS SETUP
@@ -111,11 +109,11 @@ void loop()
     if (IMU_ENABLED)
     {
       imu.getAGMT();
-      ros_publishIMU(imu.accX(), imu.accY(), imu.accZ(), imu.gyrZ());
-      gyro_z_clean = (imu.gyrZ() * DEG_TO_RAD) - gyro_z_bias;
+      gyro_z_clean = getCleanGyroZ(&imu); // we may not need this after EKF
+      ros_publishIMU(imu.accX(), imu.accY(), imu.accZ(), gyro_z_clean);
     }
 
     // ODOMETRY
-    ros_publishOdometry(updateOdometry(dt, IMU_ENABLED, gyro_z_clean));
+    ros_publishOdometry(updateOdometry(dt, IMU_ENABLED, gyro_z_clean * DEG_TO_RAD));
   }
 }

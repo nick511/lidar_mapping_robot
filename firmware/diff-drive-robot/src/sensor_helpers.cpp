@@ -40,6 +40,7 @@ void scanI2C()
     Serial.println("done\n");
 }
 
+float gyro_z_bias = 0.0f;
 void imuSetup(ICM_20948_I2C *imuP)
 {
   ICM_20948_I2C &imu = *imuP;
@@ -63,25 +64,46 @@ void imuSetup(ICM_20948_I2C *imuP)
       delay(500);
     }
   }
+
+  gyro_z_bias = imuGetGyroZBias(&imu);
 }
 
 float imuGetGyroZBias(ICM_20948_I2C *imuP)
 {
   ICM_20948_I2C &imu = *imuP;
 
+  Serial.println("Calculating gyro Z Bias...");
+
   float sum = 0.0f;
   int samples = 200;
   for (int i = 0; i < samples; i++)
   {
     imu.getAGMT();
-    sum += imu.gyrZ() * DEG_TO_RAD; // Ensure units match your loop
+    sum += imu.gyrZ();
     delay(5);
   }
 
-  float gyro_z_bias = sum / (float)samples;
+  float gyro_z_bias = sum / samples;
 
   Serial.print("Calculated Bias: ");
   Serial.println(gyro_z_bias, 6);
 
   return gyro_z_bias;
+}
+
+const float GYRO_Z_DEADBAND = 0.3f;
+float gyro_z_filtered = 0.0f;
+float getCleanGyroZ(ICM_20948_I2C *imuP)
+{
+  ICM_20948_I2C &imu = *imuP;
+  float gyro_z = imu.gyrZ() - gyro_z_bias; // Remove bias from raw gyro Z reading
+
+  if (gyro_z >= -GYRO_Z_DEADBAND && gyro_z <= GYRO_Z_DEADBAND)
+  {
+    return 0.0f; // Treat small values as zero to reduce noise
+  }
+
+  gyro_z_filtered = 0.9 * gyro_z_filtered + 0.1 * gyro_z; // Simple low-pass filter to reduce noise
+
+  return gyro_z_filtered;
 }
