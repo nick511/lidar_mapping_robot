@@ -81,6 +81,7 @@ void loop()
 {
   ota_handle();
 
+  ros_sync_clock();
   ros_subscription();
 
   // ==========================================

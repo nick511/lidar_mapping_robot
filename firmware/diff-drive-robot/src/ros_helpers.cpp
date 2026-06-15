@@ -48,6 +48,10 @@ void micro_ros_setup(char *ssid, char *pass, char *agent_ip, uint16_t agent_port
 
   Serial.println("Connected to Agent!");
 
+  // Sync the ESP32 internal clock with the ROS 2 agent
+  rmw_uros_sync_session(1000);
+
+  // ROS node initialization
   allocator = rcl_get_default_allocator();
   rclc_support_init(&support, 0, NULL, &allocator);
 
@@ -111,8 +115,20 @@ void ros_subscription()
   rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
 }
 
+template <typename T>
+void updateHeaderStamp(T &message)
+{
+  int64_t now_ns = rmw_uros_epoch_nanos();
+
+  message.header.stamp.sec = now_ns / 1000000000ULL;
+  message.header.stamp.nanosec = now_ns % 1000000000ULL;
+}
+
 void ros_publishOdometry(Pose pose)
 {
+  updateHeaderStamp(odometry_msg);
+
+  // Update pose
   odometry_msg.pose.pose.position.x = pose.x;
   odometry_msg.pose.pose.position.y = pose.y;
   odometry_msg.pose.pose.position.z = 0.0;
@@ -137,6 +153,9 @@ void ros_publishOdometry(Pose pose)
 const float GRAVITY = 9.80665f;
 void ros_publishIMU(float acc_x, float acc_y, float acc_z, float gyr_z)
 {
+  updateHeaderStamp(imu_msg);
+
+  // Update IMU data
   imu_msg.linear_acceleration.x = acc_x * GRAVITY;
   imu_msg.linear_acceleration.y = acc_y * GRAVITY;
   imu_msg.linear_acceleration.z = acc_z * GRAVITY;
@@ -149,5 +168,16 @@ void ros_publishIMU(float acc_x, float acc_y, float acc_z, float gyr_z)
   {
     Serial.print("Publish IMU failed! Error code: ");
     Serial.println(ret);
+  }
+}
+
+unsigned long last_clock_sync = millis();
+const unsigned long SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+void ros_sync_clock()
+{
+  if (millis() - last_clock_sync > SYNC_INTERVAL_MS)
+  {
+    rmw_uros_sync_session(10);
+    last_clock_sync = millis();
   }
 }
