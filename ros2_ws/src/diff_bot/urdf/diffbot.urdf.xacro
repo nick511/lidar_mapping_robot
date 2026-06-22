@@ -17,12 +17,18 @@
   <xacro:property name="wheel_radius" value="0.035"/>
   <xacro:property name="wheel_width"  value="0.027"/>
   <xacro:property name="wheel_separation" value="0.25"/>
+  <xacro:property name="wheel_x_offset" value="0.015"/>
+  <xacro:property name="wheel_z_offset" value="-0.02"/>
 
   <!-- IMU -->
   <xacro:property name="imu_length" value="0.025"/>
   <xacro:property name="imu_width" value="0.015"/>
   <xacro:property name="imu_height" value="0.01"/>
 
+  <!-- Lidar -->
+  <xacro:property name="laser_radius" value="0.035"/>
+  <xacro:property name="laser_height" value="0.02"/>
+  <xacro:property name="laser_base_height" value="0.03"/>
 
   <link name="base_link"></link>
 
@@ -44,7 +50,7 @@
   <joint name="chassis_joint" type="fixed">
     <parent link="base_link" />
     <child link="chassis_link" />
-    <origin xyz="0 0 0" />
+    <origin xyz="0 0 ${-wheel_z_offset + wheel_radius}" />
   </joint>
 
   <!-- ===================================== -->
@@ -62,12 +68,12 @@
 
   <joint name="left_wheel_joint"
          type="fixed">
-    <parent link="base_link"/>
+    <parent link="chassis_link"/>
     <child link="left_wheel"/>
     <origin
-      xyz="0
+      xyz="${wheel_x_offset}
            ${wheel_separation/2}
-           0"
+           ${wheel_z_offset}"
       rpy="${pi/2} 0 0"/>
   </joint>
 
@@ -84,14 +90,13 @@
     </visual>
   </link>
 
-  <joint name="right_wheel_joint"
-         type="fixed">
-    <parent link="base_link"/>
+  <joint name="right_wheel_joint" type="fixed">
+    <parent link="chassis_link"/>
     <child link="right_wheel"/>
     <origin
-      xyz="0
+      xyz="${wheel_x_offset}
            ${-wheel_separation/2}
-           0"
+           ${wheel_z_offset}"
       rpy="-${pi/2} 0 0"/>
   </joint>
 
@@ -109,29 +114,31 @@
     </visual>
   </link>
 
-  <joint name="imu_joint"
-         type="fixed">
-    <parent link="base_link"/>
+  <joint name="imu_joint" type="fixed">
+    <parent link="chassis_link"/>
     <child link="imu_link"/>
     <origin
-      xyz="0
+      xyz="0.05
            0
            ${chassis_height/2 + 0.015}"
       rpy="0 0 0"/>
   </joint>
 
-  <link name="laser_link"/>
+  <link name="laser_frame">
+    <visual>
+      <geometry>
+        <cylinder radius="${laser_radius}"
+                  length="${laser_height}"/>
+      </geometry>
+    </visual>
+  </link>
 
-  <joint name="laser_joint"
-        type="fixed">
-
-    <parent link="base_link"/>
-    <child link="laser_link"/>
-
+  <joint name="laser_joint" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="laser_frame"/>
     <origin
-        xyz="0.07 0 0.05"
+        xyz="0 0 ${laser_base_height+0.08}"
         rpy="0 0 0"/>
-
   </joint>
 
 </robot>
